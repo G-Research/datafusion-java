@@ -50,34 +50,7 @@ public class TestListingTable {
     try (SessionContext context = SessionContexts.create();
         BufferAllocator allocator = new RootAllocator()) {
       Path dataDir = tempDir.resolve("data");
-      String schema =
-          "{\"namespace\": \"org.example\","
-              + "\"type\": \"record\","
-              + "\"name\": \"record_name\","
-              + "\"fields\": ["
-              + " {\"name\": \"x\", \"type\": \"long\"},"
-              + " {\"name\": \"y\", \"type\": \"long\"}"
-              + " ]}";
-
-      Path parquetFilePath0 = dataDir.resolve("0.parquet");
-      ParquetWriter.writeParquet(
-          parquetFilePath0,
-          schema,
-          2,
-          (i, record) -> {
-            record.put("x", i * 2 + 1);
-            record.put("y", i * 2 + 2);
-          });
-
-      Path parquetFilePath1 = dataDir.resolve("1.parquet");
-      ParquetWriter.writeParquet(
-          parquetFilePath1,
-          schema,
-          2,
-          (i, record) -> {
-            record.put("x", i * 2 + 1);
-            record.put("y", i * 2 + 12);
-          });
+      writeParquetFiles(dataDir);
 
       try (ParquetFormat format = new ParquetFormat();
           ListingOptions listingOptions =
@@ -92,6 +65,60 @@ public class TestListingTable {
         testQuery(context, allocator);
       }
     }
+  }
+
+  @Test
+  public void testMultiplePaths(@TempDir Path tempDir) throws Exception {
+    try (SessionContext context = SessionContexts.create();
+        BufferAllocator allocator = new RootAllocator()) {
+      Path dataDir = tempDir.resolve("data");
+      Path[] dataFiles = writeParquetFiles(dataDir);
+
+      try (ParquetFormat format = new ParquetFormat();
+          ListingOptions listingOptions =
+              ListingOptions.builder(format).withFileExtension(".parquet").build();
+          ListingTableConfig tableConfig =
+              ListingTableConfig.builder(dataFiles)
+                  .withListingOptions(listingOptions)
+                  .build(context)
+                  .join();
+          ListingTable listingTable = new ListingTable(tableConfig)) {
+        context.registerTable("test", listingTable);
+        testQuery(context, allocator);
+      }
+    }
+  }
+
+  private static Path[] writeParquetFiles(Path dataDir) throws Exception {
+    String schema =
+        "{\"namespace\": \"org.example\","
+            + "\"type\": \"record\","
+            + "\"name\": \"record_name\","
+            + "\"fields\": ["
+            + " {\"name\": \"x\", \"type\": \"long\"},"
+            + " {\"name\": \"y\", \"type\": \"long\"}"
+            + " ]}";
+
+    Path parquetFilePath0 = dataDir.resolve("0.parquet");
+    ParquetWriter.writeParquet(
+        parquetFilePath0,
+        schema,
+        2,
+        (i, record) -> {
+          record.put("x", i * 2 + 1);
+          record.put("y", i * 2 + 2);
+        });
+
+    Path parquetFilePath1 = dataDir.resolve("1.parquet");
+    ParquetWriter.writeParquet(
+        parquetFilePath1,
+        schema,
+        2,
+        (i, record) -> {
+          record.put("x", i * 2 + 1);
+          record.put("y", i * 2 + 12);
+        });
+    return new Path[] {parquetFilePath0, parquetFilePath1};
   }
 
   private static void testQuery(SessionContext context, BufferAllocator allocator)
