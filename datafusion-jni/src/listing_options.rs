@@ -12,16 +12,14 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_ListingOptions_create(
     format: jlong,
     file_extension: JString,
 ) -> jlong {
-    let format = unsafe { &mut *(format as *mut Arc<dyn FileFormat>) };
+    let format = unsafe { &*(format as *const Arc<dyn FileFormat>) };
 
     let mut listing_options = ListingOptions::new(format.clone());
     listing_options.file_extension = env
         .get_string(file_extension)
         .expect("Couldn't get Java file_extension string")
         .into();
-    let listing_options = Box::into_raw(Box::new(listing_options)) as jlong;
-
-    listing_options
+    Box::into_raw(Box::new(listing_options)) as jlong
 }
 
 #[no_mangle]

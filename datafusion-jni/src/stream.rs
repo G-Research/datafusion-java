@@ -3,12 +3,14 @@ use arrow::array::StructArray;
 use arrow::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
 use datafusion::physical_plan::SendableRecordBatchStream;
 use futures::stream::TryStreamExt;
-use jni::objects::{JClass, JObject, JValue};
+use jni::objects::{JClass, JObject};
 use jni::sys::jlong;
 use jni::JNIEnv;
 use std::convert::Into;
 use std::ptr::addr_of_mut;
 use tokio::runtime::Runtime;
+
+use crate::util::{set_callback_result_error, set_callback_result_ok};
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream_next(
@@ -18,7 +20,7 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream
     stream: jlong,
     callback: JObject,
 ) {
-    let runtime = unsafe { &mut *(runtime as *mut Runtime) };
+    let runtime = unsafe { &*(runtime as *const Runtime) };
     let stream = unsafe { &mut *(stream as *mut SendableRecordBatchStream) };
     runtime.block_on(async {
         let next = stream.try_next().await;
@@ -28,39 +30,15 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream
                 let struct_array: StructArray = batch.into();
                 let array_data = struct_array.into_data();
                 let mut ffi_array = FFI_ArrowArray::new(&array_data);
-                let err_message = env.new_string("").expect("Couldn't create java string!");
-                let array_address = addr_of_mut!(ffi_array) as jlong;
-                env.call_method(
-                    callback,
-                    "callback",
-                    "(Ljava/lang/String;J)V",
-                    &[err_message.into(), array_address.into()],
-                )
+                set_callback_result_ok(&env, callback, addr_of_mut!(ffi_array));
             }
             Ok(None) => {
-                let err_message = env.new_string("").expect("Couldn't create java string!");
-                let array_address = 0 as jlong;
-                env.call_method(
-                    callback,
-                    "callback",
-                    "(Ljava/lang/String;J)V",
-                    &[err_message.into(), array_address.into()],
-                )
+                set_callback_result_ok(&env, callback, 0 as *mut FFI_ArrowSchema);
             }
             Err(err) => {
-                let err_message = env
-                    .new_string(err.to_string())
-                    .expect("Couldn't create java string!");
-                let array_address = -1 as jlong;
-                env.call_method(
-                    callback,
-                    "callback",
-                    "(Ljava/lang/String;J)V",
-                    &[err_message.into(), array_address.into()],
-                )
+                set_callback_result_error(&env, callback, &err);
             }
         }
-        .expect("failed to call method");
     });
 }
 
@@ -71,33 +49,17 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream
     stream: jlong,
     callback: JObject,
 ) {
-    let stream = unsafe { &mut *(stream as *mut SendableRecordBatchStream) };
+    let stream = unsafe { &*(stream as *const SendableRecordBatchStream) };
     let schema = stream.schema();
     let ffi_schema = FFI_ArrowSchema::try_from(&*schema);
     match ffi_schema {
         Ok(mut ffi_schema) => {
-            let schema_address = addr_of_mut!(ffi_schema) as jlong;
-            env.call_method(
-                callback,
-                "callback",
-                "(Ljava/lang/String;J)V",
-                &[JValue::Void, schema_address.into()],
-            )
+            set_callback_result_ok(&env, callback, addr_of_mut!(ffi_schema));
         }
         Err(err) => {
-            let err_message = env
-                .new_string(err.to_string())
-                .expect("Couldn't create java string!");
-            let schema_address = -1 as jlong;
-            env.call_method(
-                callback,
-                "callback",
-                "(Ljava/lang/String;J)V",
-                &[err_message.into(), schema_address.into()],
-            )
+            set_callback_result_error(&env, callback, &err);
         }
     }
-    .expect("failed to call method");
 }
 
 #[no_mangle]

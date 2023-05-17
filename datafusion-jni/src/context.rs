@@ -84,6 +84,7 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultSessionContext_re
     });
 }
 
+/// Register a table provider as a named table in the session context
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultSessionContext_registerTable<
     'local,
@@ -98,8 +99,8 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultSessionContext_re
         .get_string(table_reference)
         .expect("Couldn't get table_reference as string!")
         .into();
-    let context = unsafe { &mut *(pointer as *mut SessionContext) };
-    let table_provider = unsafe { &mut *(table_provider as *mut Arc<dyn TableProvider>) };
+    let context = unsafe { &*(pointer as *const SessionContext) };
+    let table_provider = unsafe { &*(table_provider as *const Arc<dyn TableProvider>) };
     let table_reference = TableReference::from(table_reference.as_str()).to_owned();
     let register_result = context.register_table(table_reference, table_provider.clone());
     let error_message = match register_result {

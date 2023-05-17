@@ -1,9 +1,11 @@
 use datafusion::datasource::listing::{ListingOptions, ListingTableConfig, ListingTableUrl};
 use datafusion::execution::context::SessionContext;
-use jni::objects::{JClass, JObject, JString, JValue};
+use jni::objects::{JClass, JObject, JString};
 use jni::sys::jlong;
 use jni::JNIEnv;
 use tokio::runtime::Runtime;
+
+use crate::util::{set_callback_result, set_callback_result_error};
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTableConfig_create(
@@ -15,8 +17,8 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTableConfig_creat
     listing_options: jlong,
     callback: JObject,
 ) {
-    let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let context = unsafe { &mut *(context as *mut SessionContext) };
+    let runtime = unsafe { &*(runtime as *const Runtime) };
+    let context = unsafe { &*(context as *const SessionContext) };
 
     let table_path: String = env
         .get_string(table_path)
@@ -26,17 +28,7 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTableConfig_creat
     let table_url = match table_url {
         Ok(url) => url,
         Err(err) => {
-            let err_message = env
-                .new_string(err.to_string())
-                .expect("Couldn't create java string");
-            let config_id = -1 as jlong;
-            env.call_method(
-                callback,
-                "callback",
-                "(Ljava/lang/String;J)V",
-                &[err_message.into(), config_id.into()],
-            )
-            .expect("failed to call method");
+            set_callback_result_error(&env, callback, &err);
             return;
         }
     };
@@ -46,36 +38,18 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTableConfig_creat
         let listing_table_config = match listing_options {
             0 => listing_table_config,
             listing_options => {
-                let listing_options = unsafe { &mut *(listing_options as *mut ListingOptions) };
+                let listing_options = unsafe { &*(listing_options as *const ListingOptions) };
                 listing_table_config.with_listing_options(listing_options.clone())
             }
         };
 
         let session_state = context.state();
-        match listing_table_config.infer_schema(&session_state).await {
-            Ok(config) => {
-                let config_id = Box::into_raw(Box::new(config)) as jlong;
-                env.call_method(
-                    callback,
-                    "callback",
-                    "(Ljava/lang/String;J)V",
-                    &[JValue::Void, config_id.into()],
-                )
-            }
-            Err(err) => {
-                let err_message = env
-                    .new_string(err.to_string())
-                    .expect("Couldn't create java string");
-                let config_id = -1 as jlong;
-                env.call_method(
-                    callback,
-                    "callback",
-                    "(Ljava/lang/String;J)V",
-                    &[err_message.into(), config_id.into()],
-                )
-            }
-        }
-        .expect("failed to callback method");
+        let config_result = listing_table_config.infer_schema(&session_state).await;
+        set_callback_result(
+            &env,
+            callback,
+            config_result.map(|config| Box::into_raw(Box::new(config))),
+        );
     });
 }
 

@@ -36,7 +36,7 @@ public interface SessionContext extends AutoCloseable, NativeProxy {
    * Register a table provider with the context
    *
    * @param name The table name to use to refer to the data
-   * @param tableProvider
+   * @param tableProvider the source of data for the table
    */
   void registerTable(String name, TableProvider tableProvider);
 

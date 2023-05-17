@@ -4,16 +4,30 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 
-/** Configuration for creating a ListingTable */
+/** Configuration for creating a {@link ListingTable} */
 public class ListingTableConfig extends AbstractProxy implements AutoCloseable {
+  /** A Builder for {@link ListingTableConfig} instances */
   public static class Builder {
     private final String tablePath;
     private ListingOptions options = null;
 
+    /**
+     * Create a new {@link Builder}
+     *
+     * @param tablePath The path where data files are stored. This may be a file system path or a
+     *     URL with a scheme. When no scheme is provided, glob expressions may be used to filter
+     *     files.
+     */
     public Builder(String tablePath) {
       this.tablePath = tablePath;
     }
 
+    /**
+     * Specify the {@link ListingOptions} to use
+     *
+     * @param options The {@link ListingOptions} to use
+     * @return this Builder instance
+     */
     public Builder withListingOptions(ListingOptions options) {
       this.options = options;
       return this;
@@ -22,6 +36,7 @@ public class ListingTableConfig extends AbstractProxy implements AutoCloseable {
     /**
      * Create the listing table config. This is async as the schema may need to be inferred
      *
+     * @param context The {@link SessionContext} to use when inferring the schema
      * @return Future that will complete with the table config
      */
     public CompletableFuture<ListingTableConfig> build(SessionContext context) {
@@ -29,10 +44,33 @@ public class ListingTableConfig extends AbstractProxy implements AutoCloseable {
     }
   }
 
+  /**
+   * Create a new {@link Builder} for a {@link ListingTableConfig}
+   *
+   * @param tablePath The path where data files are stored. This may be a file system path or a URL
+   *     with a scheme. When no scheme is specified, glob expressions may be used to filter files.
+   * @return A new {@link Builder} instance
+   */
+  public static Builder builder(String tablePath) {
+    return new Builder(tablePath);
+  }
+
+  /**
+   * Create a new {@link Builder} for a {@link ListingTableConfig} from a file path
+   *
+   * @param tablePath The path where data files are stored
+   * @return A new {@link Builder} instance
+   */
   public static Builder builder(Path tablePath) {
     return new Builder(tablePath.toString());
   }
 
+  /**
+   * Create a new {@link Builder} for a {@link ListingTableConfig} from a URI
+   *
+   * @param tablePath The location where data files are stored
+   * @return A new {@link Builder} instance
+   */
   public static Builder builder(URI tablePath) {
     return new Builder(tablePath.toString());
   }

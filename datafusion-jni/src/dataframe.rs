@@ -10,6 +10,8 @@ use std::io::Cursor;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
+use crate::util::set_callback_result;
+
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_collectDataframe(
     env: JNIEnv,
@@ -59,34 +61,15 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_executeStream
     dataframe: jlong,
     callback: JObject,
 ) {
-    let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let runtime = unsafe { &*(runtime as *const Runtime) };
+    let dataframe = unsafe { &*(dataframe as *const Arc<DataFrame>) };
     runtime.block_on(async {
         let stream_result = dataframe.execute_stream().await;
-        match stream_result {
-            Ok(stream) => {
-                let stream = Box::into_raw(Box::new(stream)) as jlong;
-                env.call_method(
-                    callback,
-                    "callback",
-                    "(Ljava/lang/String;J)V",
-                    &[JValue::Void, stream.into()],
-                )
-            }
-            Err(err) => {
-                let stream = -1 as jlong;
-                let err_message = env
-                    .new_string(err.to_string())
-                    .expect("Couldn't create java string!");
-                env.call_method(
-                    callback,
-                    "callback",
-                    "(Ljava/lang/String;J)V",
-                    &[err_message.into(), stream.into()],
-                )
-            }
-        }
-        .expect("failed to call method");
+        set_callback_result(
+            &env,
+            callback,
+            stream_result.map(|stream| Box::into_raw(Box::new(stream))),
+        );
     });
 }
 

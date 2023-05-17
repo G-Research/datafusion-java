@@ -5,6 +5,8 @@ use jni::sys::jlong;
 use jni::JNIEnv;
 use std::sync::Arc;
 
+use crate::util::set_object_result;
+
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTable_create(
     env: JNIEnv,
@@ -12,31 +14,20 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTable_create(
     table_config: jlong,
     object_result: JObject,
 ) {
-    let table_config = unsafe { &mut *(table_config as *mut ListingTableConfig) };
+    let table_config = unsafe { &*(table_config as *const ListingTableConfig) };
+    // Clone table config as it will be moved into ListingTable
     let table_config = ListingTableConfig {
         table_paths: table_config.table_paths.clone(),
         file_schema: table_config.file_schema.clone(),
         options: table_config.options.clone(),
     };
-    match ListingTable::try_new(table_config) {
-        Ok(lt) => {
-            let table_provider: Arc<dyn TableProvider> = Arc::new(lt);
-            let object_id = Box::into_raw(Box::new(table_provider)) as jlong;
-            env.call_method(object_result, "setOk", "(J)V", &[object_id.into()])
-        }
-        Err(err) => {
-            let err_message = env
-                .new_string(err.to_string())
-                .expect("Couldn't create java string");
-            env.call_method(
-                object_result,
-                "setError",
-                "(Ljava/lang/String;)V",
-                &[err_message.into()],
-            )
-        }
-    }
-    .expect("failed to call method");
+    let table_provider_result = ListingTable::try_new(table_config).map(|listing_table| {
+        // Return as an Arc<dyn TableProvider> rather than ListingTable so this
+        // can be passed into SessionContext.registerTable
+        let table_provider: Arc<dyn TableProvider> = Arc::new(listing_table);
+        Box::into_raw(Box::new(table_provider))
+    });
+    set_object_result(&env, object_result, table_provider_result);
 }
 
 #[no_mangle]
@@ -45,5 +36,5 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTable_destroy(
     _class: JClass,
     pointer: jlong,
 ) {
-    let _ = unsafe { Box::from_raw(pointer as *mut Arc<ListingTable>) };
+    let _ = unsafe { Box::from_raw(pointer as *mut Arc<dyn TableProvider>) };
 }

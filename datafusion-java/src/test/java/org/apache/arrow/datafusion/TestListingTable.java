@@ -2,7 +2,10 @@ package org.apache.arrow.datafusion;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
@@ -12,6 +15,36 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public class TestListingTable {
+  @Test
+  public void testCsvListingTable(@TempDir Path tempDir) throws Exception {
+    try (SessionContext context = SessionContexts.create();
+        BufferAllocator allocator = new RootAllocator()) {
+      Path dataDir = tempDir.resolve("data");
+      Files.createDirectories(dataDir);
+
+      Path csvFilePath0 = dataDir.resolve("0.csv");
+      List<String> lines = Arrays.asList("x,y", "1,2", "3,4");
+      Files.write(csvFilePath0, lines);
+
+      Path csvFilePath1 = dataDir.resolve("1.csv");
+      lines = Arrays.asList("x,y", "1,12", "3,14");
+      Files.write(csvFilePath1, lines);
+
+      try (CsvFormat format = new CsvFormat();
+          ListingOptions listingOptions =
+              ListingOptions.builder(format).withFileExtension(".csv").build();
+          ListingTableConfig tableConfig =
+              ListingTableConfig.builder(dataDir)
+                  .withListingOptions(listingOptions)
+                  .build(context)
+                  .join();
+          ListingTable listingTable = new ListingTable(tableConfig)) {
+        context.registerTable("test", listingTable);
+        testQuery(context, allocator);
+      }
+    }
+  }
+
   @Test
   public void testParquetListingTable(@TempDir Path tempDir) throws Exception {
     try (SessionContext context = SessionContexts.create();

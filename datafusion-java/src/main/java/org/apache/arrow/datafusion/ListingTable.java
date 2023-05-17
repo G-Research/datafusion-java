@@ -2,6 +2,11 @@ package org.apache.arrow.datafusion;
 
 /** A data source composed of multiple files that share a schema */
 public class ListingTable extends AbstractProxy implements TableProvider {
+  /**
+   * Create a new listing table
+   *
+   * @param config The listing table configuration
+   */
   public ListingTable(ListingTableConfig config) {
     super(createListingTable(config));
   }
