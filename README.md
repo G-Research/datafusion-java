@@ -240,7 +240,7 @@ public class ExampleMain {
 
     public static void main(String[] args) throws Exception {
         try (SessionContext sessionContext = SessionContexts.create(); BufferAllocator allocator = new RootAllocator()) {
-            DataFrame> dataFrame = sessionContext.sql("select 1.5 + sqrt(2.0)").get();
+            DataFrame dataFrame = sessionContext.sql("select 1.5 + sqrt(2.0)").get();
             dataFrame.collect(allocator).thenAccept(ExampleMain::onReaderResult).get();
         }
     }
