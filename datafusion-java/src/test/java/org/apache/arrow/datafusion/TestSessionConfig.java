@@ -48,4 +48,23 @@ public class TestSessionConfig {
       assertTrue(parquetOptions.reorderFilters());
     }
   }
+
+  @Test
+  public void testSqlParserOptions() throws Exception {
+    try (SessionConfig config = new SessionConfig()) {
+      SqlParserOptions sqlParserOptions = config.sqlParserOptions();
+
+      assertFalse(sqlParserOptions.parseFloatAsDecimal());
+      sqlParserOptions.withParseFloatAsDecimal(true);
+      assertTrue(sqlParserOptions.parseFloatAsDecimal());
+
+      assertTrue(sqlParserOptions.enableIdentNormalization());
+      sqlParserOptions.withEnableIdentNormalization(false);
+      assertFalse(sqlParserOptions.enableIdentNormalization());
+
+      assertEquals("generic", sqlParserOptions.dialect());
+      sqlParserOptions.withDialect("PostgreSQL");
+      assertEquals("PostgreSQL", sqlParserOptions.dialect());
+    }
+  }
 }

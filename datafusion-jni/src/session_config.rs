@@ -1,5 +1,5 @@
 use datafusion::execution::context::SessionConfig;
-use jni::objects::{JClass, JObject};
+use jni::objects::{JClass, JObject, JString};
 use jni::sys::{jboolean, jlong};
 use jni::JNIEnv;
 
@@ -136,4 +136,53 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_SessionConfig_setParquet
     } else {
         config.options_mut().execution.parquet.metadata_size_hint = None;
     }
+}
+
+// SqlParserOptions
+
+bool_getter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_getSqlParserOptionsParseFloatAsDecimal,
+    sql_parser.parse_float_as_decimal
+);
+bool_setter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_setSqlParserOptionsParseFloatAsDecimal,
+    sql_parser.parse_float_as_decimal
+);
+
+bool_getter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_getSqlParserOptionsEnableIdentNormalization,
+    sql_parser.enable_ident_normalization
+);
+bool_setter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_setSqlParserOptionsEnableIdentNormalization,
+    sql_parser.enable_ident_normalization
+);
+
+#[no_mangle]
+pub extern "system" fn Java_org_apache_arrow_datafusion_SessionConfig_getSqlParserOptionsDialect<
+    'local,
+>(
+    env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    pointer: jlong,
+) -> JString<'local> {
+    let config = unsafe { &*(pointer as *const SessionConfig) };
+    let dialect = &config.options().sql_parser.dialect;
+    env.new_string(dialect)
+        .expect("Couldn't create Java string")
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_apache_arrow_datafusion_SessionConfig_setSqlParserOptionsDialect(
+    mut env: JNIEnv,
+    _class: JClass,
+    pointer: jlong,
+    dialect: JString,
+) {
+    let config = unsafe { &mut *(pointer as *mut SessionConfig) };
+    let dialect: String = env
+        .get_string(&dialect)
+        .expect("Couldn't get dialect string")
+        .into();
+    config.options_mut().sql_parser.dialect = dialect;
 }

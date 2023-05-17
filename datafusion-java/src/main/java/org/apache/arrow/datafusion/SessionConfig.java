@@ -20,6 +20,15 @@ public class SessionConfig extends AbstractProxy implements AutoCloseable {
   }
 
   /**
+   * Get options specific to parsing SQL queries
+   *
+   * @return {@link SqlParserOptions} instance for this config
+   */
+  public SqlParserOptions sqlParserOptions() {
+    return new SqlParserOptions(this);
+  }
+
+  /**
    * Modify this session configuration and then return it, to simplify use in a try-with-resources
    * statement
    *
@@ -41,6 +50,7 @@ public class SessionConfig extends AbstractProxy implements AutoCloseable {
   private static native void destroy(long pointer);
 
   // ParquetOptions native methods
+
   static native boolean getParquetOptionsEnablePageIndex(long pointer);
 
   static native void setParquetOptionsEnablePageIndex(long pointer, boolean enabled);
@@ -64,4 +74,18 @@ public class SessionConfig extends AbstractProxy implements AutoCloseable {
   static native boolean getParquetOptionsReorderFilters(long pointer);
 
   static native void setParquetOptionsReorderFilters(long pointer, boolean enabled);
+
+  // SqlParserOptions native methods
+
+  static native boolean getSqlParserOptionsParseFloatAsDecimal(long pointer);
+
+  static native void setSqlParserOptionsParseFloatAsDecimal(long pointer, boolean enabled);
+
+  static native boolean getSqlParserOptionsEnableIdentNormalization(long pointer);
+
+  static native void setSqlParserOptionsEnableIdentNormalization(long pointer, boolean enabled);
+
+  static native String getSqlParserOptionsDialect(long pointer);
+
+  static native void setSqlParserOptionsDialect(long pointer, String dialect);
 }

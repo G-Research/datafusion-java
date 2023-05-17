@@ -59,6 +59,7 @@ public class SessionContexts {
    *
    * @param configuration callback to modify the {@link SessionConfig} for the session
    * @return The created context
+   * @throws Exception if an error is encountered closing the session config resource
    */
   public static SessionContext withConfig(Consumer<SessionConfig> configuration) throws Exception {
     try (SessionConfig config = new SessionConfig().withConfiguration(configuration)) {
