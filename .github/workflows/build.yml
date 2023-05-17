@@ -13,6 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Rust cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            datafusion-jni/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.*') }}
+
       - name: Stable with rustfmt and clippy
         run: rustup toolchain install stable --profile minimal --no-self-update --component rustfmt clippy
 
