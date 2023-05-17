@@ -24,11 +24,27 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_collectDatafr
     let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let schema = dataframe.schema().into();
     runtime.block_on(async {
-        let batches = dataframe
-            .clone()
-            .collect()
-            .await
-            .expect("failed to collect dataframe");
+        let batches = dataframe.clone().collect().await;
+        let batches = match batches {
+            Ok(batches) => batches,
+            Err(err) => {
+                let err_message = env
+                    .new_string(err.to_string())
+                    .expect("Couldn't create java string for error message");
+                let buff = Cursor::new(vec![0; 0]);
+                let ba = env
+                    .byte_array_from_slice(&buff.get_ref())
+                    .expect("cannot create empty byte array");
+                env.call_method(
+                    callback,
+                    "accept",
+                    "(Ljava/lang/Object;Ljava/lang/Object;)V",
+                    &[(&err_message).into(), (&ba).into()],
+                )
+                .expect("failed to call method");
+                return;
+            }
+        };
         let mut buff = Cursor::new(vec![0; 0]);
         {
             let mut writer = FileWriter::try_new(BufWriter::new(&mut buff), &schema)
@@ -43,7 +59,7 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_collectDatafr
             .expect("Couldn't create java string!");
         let ba = env
             .byte_array_from_slice(&buff.get_ref())
-            .expect("cannot create empty byte array");
+            .expect("cannot create byte array");
         env.call_method(
             callback,
             "accept",
