@@ -21,10 +21,11 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_collectDatafr
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let schema = dataframe.schema().into();
     runtime.block_on(async {
         let batches = dataframe
+            .clone()
             .collect()
             .await
             .expect("failed to collect dataframe");
@@ -62,9 +63,9 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_executeStream
     callback: JObject,
 ) {
     let runtime = unsafe { &*(runtime as *const Runtime) };
-    let dataframe = unsafe { &*(dataframe as *const Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     runtime.block_on(async {
-        let stream_result = dataframe.execute_stream().await;
+        let stream_result = dataframe.clone().execute_stream().await;
         set_callback_result(
             &mut env,
             callback,
@@ -82,9 +83,9 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_showDataframe
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     runtime.block_on(async {
-        let result = dataframe.show().await;
+        let result = dataframe.clone().show().await;
         call_error_handler(&mut env, callback, result);
     });
 }
@@ -99,13 +100,13 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_writeParquet(
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let path: String = env
         .get_string(&path)
         .expect("Couldn't get path as string!")
         .into();
     runtime.block_on(async {
-        let result = dataframe.write_parquet(&path, None).await;
+        let result = dataframe.clone().write_parquet(&path, None).await;
         call_error_handler(&mut env, callback, result);
     });
 }
@@ -120,13 +121,13 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_writeCsv(
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let path: String = env
         .get_string(&path)
         .expect("Couldn't get path as string!")
         .into();
     runtime.block_on(async {
-        let result = dataframe.write_csv(&path).await;
+        let result = dataframe.clone().write_csv(&path).await;
         call_error_handler(&mut env, callback, result);
     });
 }
@@ -142,14 +143,16 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_registerTable
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let context = unsafe { &mut *(session as *mut SessionContext) };
     let name: String = env
         .get_string(&name)
         .expect("Couldn't get name as string!")
         .into();
     runtime.block_on(async {
-        let result = context.register_table(name.as_str(), dataframe.clone()).map(|_| ());
+        let result = context
+            .register_table(name.as_str(), dataframe.clone().into_view())
+            .map(|_| ());
         call_error_handler(&mut env, callback, result);
     });
 }
