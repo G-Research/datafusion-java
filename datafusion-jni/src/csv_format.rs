@@ -1,4 +1,5 @@
 use datafusion::datasource::file_format::csv::CsvFormat;
+use datafusion::datasource::file_format::FileFormat;
 use jni::objects::JClass;
 use jni::sys::jlong;
 use jni::JNIEnv;
@@ -9,7 +10,8 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_CsvFormat_create(
     _env: JNIEnv,
     _class: JClass,
 ) -> jlong {
-    Box::into_raw(Box::new(Arc::new(CsvFormat::default()))) as jlong
+    let format: Arc<dyn FileFormat> = Arc::new(CsvFormat::default());
+    Box::into_raw(Box::new(format)) as jlong
 }
 
 #[no_mangle]

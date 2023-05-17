@@ -33,6 +33,14 @@ public interface SessionContext extends AutoCloseable, NativeProxy {
   CompletableFuture<Void> registerParquet(String name, Path path);
 
   /**
+   * Register a table provider with the context
+   *
+   * @param name The table name to use to refer to the data
+   * @param tableProvider
+   */
+  void registerTable(String name, TableProvider tableProvider);
+
+  /**
    * Get the runtime associated with this context
    *
    * @return The context's runtime
