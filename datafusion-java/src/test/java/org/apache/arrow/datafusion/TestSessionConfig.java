@@ -2,8 +2,13 @@ package org.apache.arrow.datafusion;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.nio.file.Path;
 import java.util.Optional;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestSessionConfig {
   @Test
@@ -65,6 +70,75 @@ public class TestSessionConfig {
       assertEquals("generic", sqlParserOptions.dialect());
       sqlParserOptions.withDialect("PostgreSQL");
       assertEquals("PostgreSQL", sqlParserOptions.dialect());
+    }
+  }
+
+  @Test
+  public void testExecutionOptions() throws Exception {
+    try (SessionConfig config = new SessionConfig()) {
+      ExecutionOptions executionOptions = config.executionOptions();
+
+      assertEquals(8192, executionOptions.batchSize());
+      executionOptions.withBatchSize(1024);
+      assertEquals(1024, executionOptions.batchSize());
+
+      assertTrue(executionOptions.coalesceBatches());
+      executionOptions.withCoalesceBatches(false);
+      assertFalse(executionOptions.coalesceBatches());
+
+      assertFalse(executionOptions.collectStatistics());
+      executionOptions.withCollectStatistics(true);
+      assertTrue(executionOptions.collectStatistics());
+
+      long targetPartitions = executionOptions.targetPartitions();
+      assertTrue(targetPartitions > 0);
+      executionOptions.withTargetPartitions(targetPartitions * 2);
+      assertEquals(targetPartitions * 2, executionOptions.targetPartitions());
+    }
+  }
+
+  @Test
+  public void testBatchSize(@TempDir Path tempDir) throws Exception {
+    long rowCount = 1024;
+    long batchSize = 64;
+    try (SessionContext context =
+            SessionContexts.withConfig((conf) -> conf.executionOptions().withBatchSize(batchSize));
+        BufferAllocator allocator = new RootAllocator()) {
+      Path parquetFilePath = tempDir.resolve("data.parquet");
+
+      String parquetSchema =
+          "{\"namespace\": \"org.example\","
+              + "\"type\": \"record\","
+              + "\"name\": \"record_name\","
+              + "\"fields\": ["
+              + " {\"name\": \"x\", \"type\": \"long\"}"
+              + " ]}";
+
+      ParquetWriter.writeParquet(
+          parquetFilePath,
+          parquetSchema,
+          1024,
+          (i, record) -> {
+            record.put("x", i);
+          });
+
+      context.registerParquet("test", parquetFilePath).join();
+
+      try (RecordBatchStream stream =
+          context
+              .sql("SELECT * FROM test")
+              .thenComposeAsync(df -> df.executeStream(allocator))
+              .join()) {
+        VectorSchemaRoot root = stream.getVectorSchemaRoot();
+
+        long rowsReceived = 0;
+        while (stream.loadNextBatch().join()) {
+          assertTrue(root.getRowCount() <= batchSize);
+          rowsReceived += root.getRowCount();
+        }
+
+        assertEquals(rowCount, rowsReceived);
+      }
     }
   }
 }

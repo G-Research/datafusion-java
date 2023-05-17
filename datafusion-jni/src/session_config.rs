@@ -57,6 +57,74 @@ macro_rules! bool_setter {
     }
 }
 
+macro_rules! usize_getter {
+    ($name:ident, $($property_path:ident).+) => {
+        #[no_mangle]
+        pub extern "system" fn $name(
+            _env: JNIEnv,
+            _class: JClass,
+            pointer: jlong,
+        ) -> jlong {
+            let config = unsafe { &*(pointer as *const SessionConfig) };
+            let property_value = config.options().$($property_path).+;
+            property_value as jlong
+        }
+    }
+}
+
+macro_rules! usize_setter {
+    ($name:ident, $($property_path:ident).+) => {
+        #[no_mangle]
+        pub extern "system" fn $name(
+            _env: JNIEnv,
+            _class: JClass,
+            pointer: jlong,
+            value: jlong,
+        ) {
+            let config = unsafe { &mut *(pointer as *mut SessionConfig) };
+            config.options_mut().$($property_path).+ = value as usize;
+        }
+    }
+}
+
+// ExecutionOptions
+
+usize_getter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_getExecutionOptionsBatchSize,
+    execution.batch_size
+);
+usize_setter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_setExecutionOptionsBatchSize,
+    execution.batch_size
+);
+
+bool_getter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_getExecutionOptionsCoalesceBatches,
+    execution.coalesce_batches
+);
+bool_setter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_setExecutionOptionsCoalesceBatches,
+    execution.coalesce_batches
+);
+
+bool_getter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_getExecutionOptionsCollectStatistics,
+    execution.collect_statistics
+);
+bool_setter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_setExecutionOptionsCollectStatistics,
+    execution.collect_statistics
+);
+
+usize_getter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_getExecutionOptionsTargetPartitions,
+    execution.target_partitions
+);
+usize_setter!(
+    Java_org_apache_arrow_datafusion_SessionConfig_setExecutionOptionsTargetPartitions,
+    execution.target_partitions
+);
+
 // ParquetOptions
 
 bool_getter!(

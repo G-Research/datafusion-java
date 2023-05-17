@@ -11,6 +11,15 @@ public class SessionConfig extends AbstractProxy implements AutoCloseable {
   }
 
   /**
+   * Get options related to query execution
+   *
+   * @return {@link ExecutionOptions} instance for this config
+   */
+  public ExecutionOptions executionOptions() {
+    return new ExecutionOptions(this);
+  }
+
+  /**
    * Get options specific to reading Parquet data
    *
    * @return {@link ParquetOptions} instance for this config
@@ -48,6 +57,24 @@ public class SessionConfig extends AbstractProxy implements AutoCloseable {
   private static native long create();
 
   private static native void destroy(long pointer);
+
+  // ExecutionOptions native methods
+
+  static native long getExecutionOptionsBatchSize(long pointer);
+
+  static native void setExecutionOptionsBatchSize(long pointer, long batchSize);
+
+  static native boolean getExecutionOptionsCoalesceBatches(long pointer);
+
+  static native void setExecutionOptionsCoalesceBatches(long pointer, boolean enabled);
+
+  static native boolean getExecutionOptionsCollectStatistics(long pointer);
+
+  static native void setExecutionOptionsCollectStatistics(long pointer, boolean enabled);
+
+  static native long getExecutionOptionsTargetPartitions(long pointer);
+
+  static native void setExecutionOptionsTargetPartitions(long pointer, long batchSize);
 
   // ParquetOptions native methods
 
