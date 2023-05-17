@@ -6,6 +6,7 @@ public class ListingOptions extends AbstractProxy implements AutoCloseable {
   public static class Builder {
     private final FileFormat format;
     private String fileExtension = "";
+    private boolean collectStat = true;
 
     /**
      * Create a new {@link ListingOptions} builder
@@ -24,6 +25,17 @@ public class ListingOptions extends AbstractProxy implements AutoCloseable {
      */
     public Builder withFileExtension(String fileExtension) {
       this.fileExtension = fileExtension;
+      return this;
+    }
+
+    /**
+     * Specify whether to collect statistics from files
+     *
+     * @param collectStat whether to collect statistics
+     * @return This builder
+     */
+    public Builder withCollectStat(boolean collectStat) {
+      this.collectStat = collectStat;
       return this;
     }
 
@@ -53,7 +65,7 @@ public class ListingOptions extends AbstractProxy implements AutoCloseable {
    * @param builder The builder to use
    */
   private ListingOptions(Builder builder) {
-    super(create(builder.format.getPointer(), builder.fileExtension));
+    super(create(builder.format.getPointer(), builder.fileExtension, builder.collectStat));
   }
 
   @Override
@@ -61,7 +73,7 @@ public class ListingOptions extends AbstractProxy implements AutoCloseable {
     destroy(pointer);
   }
 
-  private static native long create(long format, String fileExtension);
+  private static native long create(long format, String fileExtension, boolean collectStat);
 
   private static native void destroy(long pointer);
 }

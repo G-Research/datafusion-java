@@ -72,6 +72,31 @@ public class TestListingTable {
   }
 
   @Test
+  public void testDisableCollectStat(@TempDir Path tempDir) throws Exception {
+    try (SessionContext context = SessionContexts.create();
+        BufferAllocator allocator = new RootAllocator()) {
+      Path dataDir = tempDir.resolve("data");
+      writeParquetFiles(dataDir);
+
+      try (ParquetFormat format = new ParquetFormat();
+          ListingOptions listingOptions =
+              ListingOptions.builder(format)
+                  .withFileExtension(".parquet")
+                  .withCollectStat(false)
+                  .build();
+          ListingTableConfig tableConfig =
+              ListingTableConfig.builder(dataDir)
+                  .withListingOptions(listingOptions)
+                  .build(context)
+                  .join();
+          ListingTable listingTable = new ListingTable(tableConfig)) {
+        context.registerTable("test", listingTable);
+        testQuery(context, allocator);
+      }
+    }
+  }
+
+  @Test
   public void testMultiplePaths(@TempDir Path tempDir) throws Exception {
     try (SessionContext context = SessionContexts.create();
         BufferAllocator allocator = new RootAllocator()) {
