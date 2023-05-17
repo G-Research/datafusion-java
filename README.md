@@ -41,8 +41,8 @@ import org.apache.arrow.datafusion.SessionContexts;
 public class DataFusionDemo {
 
     public static void main(String[] args) throws Exception {
-        try (SessionContext executionContext = SessionContexts.create()) {
-            executionContext.sql("select sqrt(65536)").thenCompose(DataFrame::show).join();
+        try (SessionContext sessionContext = SessionContexts.create()) {
+            sessionContext.sql("select sqrt(65536)").thenCompose(DataFrame::show).join();
         }
     }
 }
@@ -239,9 +239,9 @@ public class ExampleMain {
     private static final Logger logger = LoggerFactory.getLogger(ExampleMain.class);
 
     public static void main(String[] args) throws Exception {
-        try (SessionContext context = SessionContexts.create(); BufferAllocator allocator = new RootAllocator()) {
-            CompletableFuture<DataFrame> dataFrame = context.sql("select 1.5 + sqrt(2.0)");
-            dataFrame.get().collect(allocator).thenAccept(ExampleMain::onReaderResult);
+        try (SessionContext sessionContext = SessionContexts.create(); BufferAllocator allocator = new RootAllocator()) {
+            DataFrame> dataFrame = sessionContext.sql("select 1.5 + sqrt(2.0)").get();
+            dataFrame.collect(allocator).thenAccept(ExampleMain::onReaderResult).get();
         }
     }
 
