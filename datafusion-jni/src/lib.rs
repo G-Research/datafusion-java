@@ -6,5 +6,6 @@ mod listing_table;
 mod listing_table_config;
 mod parquet_format;
 mod runtime;
+mod session_config;
 mod stream;
 mod util;
