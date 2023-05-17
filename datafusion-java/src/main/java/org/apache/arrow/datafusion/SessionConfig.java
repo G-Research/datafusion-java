@@ -1,6 +1,7 @@
 package org.apache.arrow.datafusion;
 
 import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 
 /** Configuration for creating a {@link SessionContext} using {@link SessionContexts#withConfig} */
 public class SessionConfig extends AbstractProxy implements AutoCloseable {
@@ -30,10 +31,6 @@ public class SessionConfig extends AbstractProxy implements AutoCloseable {
     return this;
   }
 
-  void setParquetOptionsEnablePageIndex(boolean enabled) {
-    setParquetOptionsEnablePageIndex(getPointer(), enabled);
-  }
-
   @Override
   void doClose(long pointer) {
     destroy(pointer);
@@ -43,5 +40,28 @@ public class SessionConfig extends AbstractProxy implements AutoCloseable {
 
   private static native void destroy(long pointer);
 
-  private static native void setParquetOptionsEnablePageIndex(long pointer, boolean enabled);
+  // ParquetOptions native methods
+  static native boolean getParquetOptionsEnablePageIndex(long pointer);
+
+  static native void setParquetOptionsEnablePageIndex(long pointer, boolean enabled);
+
+  static native boolean getParquetOptionsPruning(long pointer);
+
+  static native void setParquetOptionsPruning(long pointer, boolean enabled);
+
+  static native boolean getParquetOptionsSkipMetadata(long pointer);
+
+  static native void setParquetOptionsSkipMetadata(long pointer, boolean enabled);
+
+  static native void getParquetOptionsMetadataSizeHint(long pointer, LongConsumer onValue);
+
+  static native void setParquetOptionsMetadataSizeHint(long pointer, boolean hasValue, long value);
+
+  static native boolean getParquetOptionsPushdownFilters(long pointer);
+
+  static native void setParquetOptionsPushdownFilters(long pointer, boolean enabled);
+
+  static native boolean getParquetOptionsReorderFilters(long pointer);
+
+  static native void setParquetOptionsReorderFilters(long pointer, boolean enabled);
 }
