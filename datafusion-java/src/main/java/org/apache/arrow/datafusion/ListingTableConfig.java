@@ -2,13 +2,14 @@ package org.apache.arrow.datafusion;
 
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 
 /** Configuration for creating a {@link ListingTable} */
 public class ListingTableConfig extends AbstractProxy implements AutoCloseable {
   /** A Builder for {@link ListingTableConfig} instances */
   public static class Builder {
-    private final String tablePath;
+    private final String[] tablePaths;
     private ListingOptions options = null;
 
     /**
@@ -19,7 +20,18 @@ public class ListingTableConfig extends AbstractProxy implements AutoCloseable {
      *     files.
      */
     public Builder(String tablePath) {
-      this.tablePath = tablePath;
+      this(new String[] {tablePath});
+    }
+
+    /**
+     * Create a new {@link Builder}
+     *
+     * @param tablePaths The paths where data files are stored. This may be an array of file system
+     *     paths or an array of URLs with a scheme. When no scheme is provided, glob expressions may
+     *     be used to filter files.
+     */
+    public Builder(String[] tablePaths) {
+      this.tablePaths = tablePaths;
     }
 
     /**
@@ -66,6 +78,20 @@ public class ListingTableConfig extends AbstractProxy implements AutoCloseable {
   }
 
   /**
+   * Create a new {@link Builder} for a {@link ListingTableConfig} from an array of paths
+   *
+   * @param tablePaths The path array where data files are stored
+   * @return A new {@link Builder} instance
+   */
+  public static Builder builder(Path[] tablePaths) {
+    String[] pathStrings =
+        Arrays.stream(tablePaths)
+            .map(path -> path.toString())
+            .toArray(length -> new String[length]);
+    return new Builder(pathStrings);
+  }
+
+  /**
    * Create a new {@link Builder} for a {@link ListingTableConfig} from a URI
    *
    * @param tablePath The location where data files are stored
@@ -86,7 +112,7 @@ public class ListingTableConfig extends AbstractProxy implements AutoCloseable {
     create(
         runtime.getPointer(),
         context.getPointer(),
-        builder.tablePath,
+        builder.tablePaths,
         builder.options == null ? 0 : builder.options.getPointer(),
         (errMessage, configId) -> {
           if (null != errMessage && !errMessage.equals("")) {
@@ -104,7 +130,7 @@ public class ListingTableConfig extends AbstractProxy implements AutoCloseable {
   }
 
   private static native void create(
-      long runtime, long context, String tablePath, long options, ObjectResultCallback callback);
+      long runtime, long context, String[] tablePaths, long options, ObjectResultCallback callback);
 
   private static native void destroy(long pointer);
 }
