@@ -109,9 +109,6 @@ jobs:
       - name: List downloaded artifacts
         run: tree datafusion-java/build/jni_libs
 
-      - name: Build and test
-        run: ./gradlew build
-
       - name: Publish to Maven Local
         run: ./gradlew publishToMavenLocal
 
