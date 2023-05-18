@@ -13,7 +13,7 @@ edition = "2021"
 jni = "^0.21.1"
 tokio = "^1.28.0"
 arrow = { version = "38.0.0", features = ["ffi"] }
-datafusion = "^24.0.0"
+datafusion = "24.0.0"
 futures = "0.3.28"
 
 [lib]
