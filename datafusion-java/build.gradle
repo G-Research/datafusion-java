@@ -8,10 +8,10 @@ plugins {
 }
 
 dependencies {
-    implementation 'org.slf4j:slf4j-api:1.7.36'
+    api 'org.slf4j:slf4j-api:1.7.36'
     implementation 'org.apache.arrow:arrow-c-data:9.0.0'
-    implementation 'org.apache.arrow:arrow-format:9.0.0'
-    implementation 'org.apache.arrow:arrow-vector:9.0.0'
+    api 'org.apache.arrow:arrow-format:9.0.0'
+    api 'org.apache.arrow:arrow-vector:9.0.0'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
     testImplementation 'org.apache.hadoop:hadoop-client:3.3.5'
     testImplementation 'org.apache.hadoop:hadoop-common:3.3.5'
@@ -152,6 +152,39 @@ publishing {
                     connection = 'scm:git:git@github.com:G-Research/datafusion-java.git'
                     developerConnection = 'scm:git:https://github.com/G-Research/datafusion-java.git'
                     url = 'https://github.com/G-Research/datafusion-java'
+                }
+            }
+            pom.withXml {
+                // Dependencies don't get mapped to the pom file due to using custom artifacts,
+                // so add them here
+                def dependenciesNode = asNode().appendNode('dependencies')
+                def apiDependencies = configurations.api.allDependencies
+                Set<String> includedDependencies = []
+                apiDependencies.each {
+                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                    dependencyNode.appendNode('groupId', it.getGroup())
+                    dependencyNode.appendNode('artifactId', it.getName())
+                    dependencyNode.appendNode('version', it.getVersion())
+                    dependencyNode.appendNode('scope', 'compile')
+                    includedDependencies.add(String.format("%s:%s", it.getGroup(), it.getName()))
+                }
+                def implementationDependencies = configurations.implementation.allDependencies
+                implementationDependencies.each {
+                    if (!includedDependencies.contains(String.format("%s:%s", it.getGroup(), it.getName()))) {
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', it.getGroup())
+                        dependencyNode.appendNode('artifactId', it.getName())
+                        dependencyNode.appendNode('version', it.getVersion())
+                        dependencyNode.appendNode('scope', 'runtime')
+                    }
+                }
+                def runtimeDependencies = configurations.runtimeOnly.allDependencies
+                runtimeDependencies.each {
+                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                    dependencyNode.appendNode('groupId', it.getGroup())
+                    dependencyNode.appendNode('artifactId', it.getName())
+                    dependencyNode.appendNode('version', it.getVersion())
+                    dependencyNode.appendNode('scope', 'runtime')
                 }
             }
         }
