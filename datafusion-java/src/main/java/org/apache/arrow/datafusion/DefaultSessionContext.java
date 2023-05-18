@@ -19,6 +19,8 @@ class DefaultSessionContext extends AbstractProxy implements SessionContext {
   static native void registerParquet(
       long runtime, long context, String name, String path, Consumer<String> callback);
 
+  static native String registerTable(long context, String table_reference, long tableProvider);
+
   @Override
   public CompletableFuture<DataFrame> sql(String sql) {
     long runtime = getRuntime().getPointer();
@@ -62,6 +64,14 @@ class DefaultSessionContext extends AbstractProxy implements SessionContext {
         path.toAbsolutePath().toString(),
         (errMessage) -> voidCallback(future, errMessage));
     return future;
+  }
+
+  @Override
+  public void registerTable(String table_reference, TableProvider tableProvider) {
+    String errorMessage = registerTable(getPointer(), table_reference, tableProvider.getPointer());
+    if (errorMessage != null && !errorMessage.isEmpty()) {
+      throw new RuntimeException(errorMessage);
+    }
   }
 
   private void voidCallback(CompletableFuture<Void> future, String errMessage) {
