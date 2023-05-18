@@ -42,7 +42,7 @@ jobs:
         uses: gradle/wrapper-validation-action@v1
 
       - name: Cargo build
-        run: ./gradlew cargoReleaseBuild
+        run: ./gradlew cargoDevBuild
 
       - name: Upload built artifacts
         uses: actions/upload-artifact@v3
@@ -50,7 +50,7 @@ jobs:
         with:
           name: datafusion-jni-${{ matrix.os }}
           if-no-files-found: error
-          path: "datafusion-jni/target/release/libdatafusion_jni.dylib"
+          path: "datafusion-jni/target/debug/libdatafusion_jni.dylib"
           retention-days: 3
 
       - name: Upload built artifacts
@@ -59,7 +59,7 @@ jobs:
         with:
           name: datafusion-jni-${{ matrix.os }}
           if-no-files-found: error
-          path: "datafusion-jni/target/release/libdatafusion_jni.so"
+          path: "datafusion-jni/target/debug/libdatafusion_jni.so"
           retention-days: 3
 
       - name: Upload built artifacts
@@ -69,7 +69,7 @@ jobs:
           name: datafusion-jni-${{ matrix.os }}
           if-no-files-found: error
           # note no "lib"
-          path: "datafusion-jni\\target\\release\\datafusion_jni.dll"
+          path: "datafusion-jni\\target\\debug\\datafusion_jni.dll"
           retention-days: 3
 
   java:
