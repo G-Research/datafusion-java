@@ -111,8 +111,6 @@ jobs:
 
       - name: Build and test
         run: ./gradlew build
-        env:
-          JNI_PATH: ${{ github.workspace }}/datafusion-java/build/jni_libs/linux-x86_64
 
       - name: Publish to Maven Local
         run: ./gradlew publishToMavenLocal
