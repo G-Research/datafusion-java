@@ -14,7 +14,7 @@ use crate::util::{set_callback_result_error, set_callback_result_ok};
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream_next(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     runtime: jlong,
     stream: jlong,
@@ -30,13 +30,13 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream
                 let struct_array: StructArray = batch.into();
                 let array_data = struct_array.into_data();
                 let mut ffi_array = FFI_ArrowArray::new(&array_data);
-                set_callback_result_ok(&env, callback, addr_of_mut!(ffi_array));
+                set_callback_result_ok(&mut env, callback, addr_of_mut!(ffi_array));
             }
             Ok(None) => {
-                set_callback_result_ok(&env, callback, 0 as *mut FFI_ArrowSchema);
+                set_callback_result_ok(&mut env, callback, 0 as *mut FFI_ArrowSchema);
             }
             Err(err) => {
-                set_callback_result_error(&env, callback, &err);
+                set_callback_result_error(&mut env, callback, &err);
             }
         }
     });
@@ -44,7 +44,7 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream_getSchema(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     stream: jlong,
     callback: JObject,
@@ -54,10 +54,10 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DefaultRecordBatchStream
     let ffi_schema = FFI_ArrowSchema::try_from(&*schema);
     match ffi_schema {
         Ok(mut ffi_schema) => {
-            set_callback_result_ok(&env, callback, addr_of_mut!(ffi_schema));
+            set_callback_result_ok(&mut env, callback, addr_of_mut!(ffi_schema));
         }
         Err(err) => {
-            set_callback_result_error(&env, callback, &err);
+            set_callback_result_error(&mut env, callback, &err);
         }
     }
 }

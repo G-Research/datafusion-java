@@ -1,7 +1,7 @@
 use arrow::ipc::writer::FileWriter;
 use datafusion::dataframe::DataFrame;
 use datafusion::prelude::SessionContext;
-use jni::objects::{JClass, JObject, JString, JValue};
+use jni::objects::{JClass, JObject, JString};
 use jni::sys::jlong;
 use jni::JNIEnv;
 use std::convert::Into;
@@ -10,21 +10,22 @@ use std::io::Cursor;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
-use crate::util::set_callback_result;
+use crate::util::{call_error_handler, set_callback_result};
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_collectDataframe(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     runtime: jlong,
     dataframe: jlong,
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let schema = dataframe.schema().into();
     runtime.block_on(async {
         let batches = dataframe
+            .clone()
             .collect()
             .await
             .expect("failed to collect dataframe");
@@ -47,7 +48,7 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_collectDatafr
             callback,
             "accept",
             "(Ljava/lang/Object;Ljava/lang/Object;)V",
-            &[err_message.into(), ba.into()],
+            &[(&err_message).into(), (&ba).into()],
         )
         .expect("failed to call method");
     });
@@ -55,18 +56,18 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_collectDatafr
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_executeStream(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     runtime: jlong,
     dataframe: jlong,
     callback: JObject,
 ) {
     let runtime = unsafe { &*(runtime as *const Runtime) };
-    let dataframe = unsafe { &*(dataframe as *const Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     runtime.block_on(async {
-        let stream_result = dataframe.execute_stream().await;
+        let stream_result = dataframe.clone().execute_stream().await;
         set_callback_result(
-            &env,
+            &mut env,
             callback,
             stream_result.map(|stream| Box::into_raw(Box::new(stream))),
         );
@@ -75,38 +76,23 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_executeStream
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_showDataframe(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     runtime: jlong,
     dataframe: jlong,
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     runtime.block_on(async {
-        let r = dataframe.show().await;
-        let err_message: JValue = match r {
-            Ok(_) => JValue::Void,
-            Err(err) => {
-                let err_message = env
-                    .new_string(err.to_string())
-                    .expect("Couldn't create java string!");
-                err_message.into()
-            }
-        };
-        env.call_method(
-            callback,
-            "accept",
-            "(Ljava/lang/Object;)V",
-            &[err_message.into()],
-        )
-        .expect("failed to call method");
+        let result = dataframe.clone().show().await;
+        call_error_handler(&mut env, callback, result);
     });
 }
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_writeParquet(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     runtime: jlong,
     dataframe: jlong,
@@ -114,35 +100,20 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_writeParquet(
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let path: String = env
-        .get_string(path)
+        .get_string(&path)
         .expect("Couldn't get path as string!")
         .into();
     runtime.block_on(async {
-        let r = dataframe.write_parquet(&path, None).await;
-        let err_message: JValue = match r {
-            Ok(_) => JValue::Void,
-            Err(err) => {
-                let err_message = env
-                    .new_string(err.to_string())
-                    .expect("Couldn't create java string!");
-                err_message.into()
-            }
-        };
-        env.call_method(
-            callback,
-            "accept",
-            "(Ljava/lang/Object;)V",
-            &[err_message.into()],
-        )
-        .expect("failed to call method");
+        let result = dataframe.clone().write_parquet(&path, None).await;
+        call_error_handler(&mut env, callback, result);
     });
 }
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_writeCsv(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     runtime: jlong,
     dataframe: jlong,
@@ -150,35 +121,20 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_writeCsv(
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let path: String = env
-        .get_string(path)
+        .get_string(&path)
         .expect("Couldn't get path as string!")
         .into();
     runtime.block_on(async {
-        let r = dataframe.write_csv(&path).await;
-        let err_message: JValue = match r {
-            Ok(_) => JValue::Void,
-            Err(err) => {
-                let err_message = env
-                    .new_string(err.to_string())
-                    .expect("Couldn't create java string!");
-                err_message.into()
-            }
-        };
-        env.call_method(
-            callback,
-            "accept",
-            "(Ljava/lang/Object;)V",
-            &[err_message.into()],
-        )
-        .expect("failed to call method");
+        let result = dataframe.clone().write_csv(&path).await;
+        call_error_handler(&mut env, callback, result);
     });
 }
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_registerTable(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     runtime: jlong,
     dataframe: jlong,
@@ -187,30 +143,17 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_DataFrames_registerTable
     callback: JObject,
 ) {
     let runtime = unsafe { &mut *(runtime as *mut Runtime) };
-    let dataframe = unsafe { &mut *(dataframe as *mut Arc<DataFrame>) };
+    let dataframe = unsafe { &*(dataframe as *const DataFrame) };
     let context = unsafe { &mut *(session as *mut SessionContext) };
     let name: String = env
-        .get_string(name)
+        .get_string(&name)
         .expect("Couldn't get name as string!")
         .into();
     runtime.block_on(async {
-        let r = context.register_table(name.as_str(), dataframe.clone());
-        let err_message: JValue = match r {
-            Ok(_) => JValue::Void,
-            Err(err) => {
-                let err_message = env
-                    .new_string(err.to_string())
-                    .expect("Couldn't create java string!");
-                err_message.into()
-            }
-        };
-        env.call_method(
-            callback,
-            "accept",
-            "(Ljava/lang/Object;)V",
-            &[err_message.into()],
-        )
-        .expect("failed to call method");
+        let result = context
+            .register_table(name.as_str(), dataframe.clone().into_view())
+            .map(|_| ());
+        call_error_handler(&mut env, callback, result);
     });
 }
 

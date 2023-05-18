@@ -9,7 +9,7 @@ use crate::util::set_object_result;
 
 #[no_mangle]
 pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTable_create(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     table_config: jlong,
     object_result: JObject,
@@ -27,7 +27,7 @@ pub extern "system" fn Java_org_apache_arrow_datafusion_ListingTable_create(
         let table_provider: Arc<dyn TableProvider> = Arc::new(listing_table);
         Box::into_raw(Box::new(table_provider))
     });
-    set_object_result(&env, object_result, table_provider_result);
+    set_object_result(&mut env, object_result, table_provider_result);
 }
 
 #[no_mangle]
