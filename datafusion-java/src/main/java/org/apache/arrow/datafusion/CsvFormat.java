@@ -12,10 +12,6 @@ public class CsvFormat extends AbstractProxy implements FileFormat {
     destroy(pointer);
   }
 
-  static {
-    JNILoader.load();
-  }
-
   private static native long create();
 
   private static native void destroy(long pointer);
