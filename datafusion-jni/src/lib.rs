@@ -1,3 +1,4 @@
+mod arrow_format;
 mod context;
 mod csv_format;
 mod dataframe;
