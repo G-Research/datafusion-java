@@ -24,9 +24,9 @@ public class TestSessionConfig {
     try (SessionConfig config = new SessionConfig()) {
       ParquetOptions parquetOptions = config.parquetOptions();
 
-      assertFalse(parquetOptions.enablePageIndex());
-      parquetOptions.withEnablePageIndex(true);
       assertTrue(parquetOptions.enablePageIndex());
+      parquetOptions.withEnablePageIndex(false);
+      assertFalse(parquetOptions.enablePageIndex());
 
       assertTrue(parquetOptions.pruning());
       parquetOptions.withPruning(false);
