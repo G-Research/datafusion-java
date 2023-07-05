@@ -82,9 +82,9 @@ jobs:
           path: "datafusion-jni\\target\\release\\datafusion_jni.dll"
           retention-days: 3
 
-    - name: Stop CentOS container
-      if: runner.os == 'Linux'
-      run: docker rm -f centos
+      - name: Stop CentOS container
+        if: runner.os == 'Linux'
+        run: docker rm -f centos
 
   java:
     needs:
