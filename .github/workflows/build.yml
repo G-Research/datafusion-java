@@ -55,7 +55,11 @@ jobs:
 
       - name: Cargo build Linux
         if: runner.os == 'Linux'
-        run: docker exec -w $PWD/datafusion-jni centos sh -c "source /root/.cargo/env && cargo build"
+        run: |
+          docker exec -w $PWD/datafusion-jni centos sh -c "source /root/.cargo/env && cargo build"
+          # Change file ownership so we can cache outputs
+          sudo chown -R $(whoami) datafusion-jni/target
+          sudo chown -R $(whoami) $HOME/.cargo
 
       - name: Cargo build
         if: runner.os != 'Linux'
