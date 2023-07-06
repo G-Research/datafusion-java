@@ -50,7 +50,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           docker exec -w $PWD/datafusion-jni centos sh -c "source /root/.cargo/env && cargo build --release"
-          # Change file ownership so we can cache outputs
+          # Change file ownership so outputs can be cached
           sudo chown -R $(whoami) datafusion-jni/target
           sudo chown -R $(whoami) $HOME/.cargo
 
