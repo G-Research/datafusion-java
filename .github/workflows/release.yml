@@ -22,9 +22,6 @@ jobs:
             datafusion-jni/target/
           key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.*') }}
 
-      - name: Stable with rustfmt and clippy
-        run: rustup toolchain install stable --profile minimal --no-self-update --component rustfmt clippy
-
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
@@ -34,7 +31,31 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@v1
 
+      # Setup a CentOS 7 container to build on Linux x64 for backwards compatibility.
+      - name: Start CentOS container and install Rust toolchain
+        if: runner.os == 'Linux'
+        run: |
+          docker run -d --name centos --entrypoint tail -v $PWD:$PWD -v $HOME/.cargo:/root/.cargo centos:7 -f /dev/null
+          docker exec centos sh -c "yum install -y centos-release-scl && \
+                                    yum install -y devtoolset-7 && \
+                                    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+                                    source /root/.cargo/env && \
+                                    rustup toolchain install stable --profile minimal --no-self-update --component rustfmt clippy"
+
+      - name: Install Rust toolchain
+        if: runner.os != 'Linux'
+        run: rustup toolchain install stable --profile minimal --no-self-update --component rustfmt clippy
+
+      - name: Cargo build Linux
+        if: runner.os == 'Linux'
+        run: |
+          docker exec -w $PWD/datafusion-jni centos sh -c "source /root/.cargo/env && cargo build --release"
+          # Change file ownership so outputs can be cached
+          sudo chown -R $(whoami) datafusion-jni/target
+          sudo chown -R $(whoami) $HOME/.cargo
+
       - name: Cargo build
+        if: runner.os != 'Linux'
         run: ./gradlew cargoReleaseBuild
 
       - name: Upload built artifacts
@@ -64,6 +85,10 @@ jobs:
           # note no "lib"
           path: "datafusion-jni\\target\\release\\datafusion_jni.dll"
           retention-days: 3
+
+      - name: Stop CentOS container
+        if: runner.os == 'Linux'
+        run: docker rm -f centos
 
   java:
     needs:
