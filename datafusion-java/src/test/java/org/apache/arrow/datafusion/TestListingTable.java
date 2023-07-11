@@ -3,9 +3,11 @@ package org.apache.arrow.datafusion;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.FileOutputStream;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -121,6 +123,41 @@ public class TestListingTable {
           ListingTable listingTable = new ListingTable(tableConfig)) {
         context.registerTable("test", listingTable);
         testQuery(context, allocator);
+      }
+    }
+  }
+
+  @Test
+  public void testIpcCompressedArrowData() throws Exception {
+    URL fileUrl = this.getClass().getResource("/zstd_compressed.arrow");
+    Path[] ipcFilePaths = new Path[] {Paths.get(fileUrl.getPath())};
+    try (SessionContext context = SessionContexts.create();
+        BufferAllocator allocator = new RootAllocator()) {
+      try (ArrowFormat format = new ArrowFormat();
+          ListingOptions listingOptions = ListingOptions.builder(format).build();
+          ListingTableConfig tableConfig =
+              ListingTableConfig.builder(ipcFilePaths)
+                  .withListingOptions(listingOptions)
+                  .build(context)
+                  .join();
+          ListingTable listingTable = new ListingTable(tableConfig)) {
+        context.registerTable("test", listingTable);
+        try (ArrowReader reader =
+            context
+                .sql("SELECT x FROM test")
+                .thenComposeAsync(df -> df.collect(allocator))
+                .join()) {
+
+          int globalRow = 0;
+          VectorSchemaRoot root = reader.getVectorSchemaRoot();
+          while (reader.loadNextBatch()) {
+            BigIntVector xValues = (BigIntVector) root.getVector(0);
+            for (int row = 0; row < root.getRowCount(); ++row, ++globalRow) {
+              assertEquals(globalRow % 10, xValues.get(row));
+            }
+          }
+          assertEquals(1000, globalRow);
+        }
       }
     }
   }
